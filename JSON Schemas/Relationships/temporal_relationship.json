@@ -1,0 +1,56 @@
+{
+  "relationship_meta": {
+    "relationship_id": "REL-5501",
+    "container_id": "CONT-7762",
+    "relationship_type": "PERSON_TO_ASSET",
+    "created_at": "2026-04-18T10:05:00Z",
+    "version": 1,
+    "status": "active"
+  },
+  "nodes": {
+    "from_node": {
+      "node_id": "PRSN-99021",
+      "node_type": "Person",
+      "role_in_relationship": "subject"
+    },
+    "to_node": {
+      "node_id": "AST-VEH-99201",
+      "node_type": "Vehicle",
+      "role_in_relationship": "object"
+    }
+  },
+  "attributes": {
+    "role": "Main_Driver",
+    "context_policy_id": "POL-MOTOR-001",
+    "effective_from": "2026-04-18",
+    "effective_to": null,
+    "use_type": "Social_and_Commuting",
+    "has_owners_permission": true,
+    "annual_mileage_limit": 10000,
+    "driving_restrictions": ["No_track_days", "No_commercial_use"],
+    "validation_status": "Verified"
+  },
+  "temporal_history": [
+    {
+      "event_type": "RelationshipStarted",
+      "recorded_at": "2026-04-18T10:05:00Z",
+      "effective_from": "2026-04-18",
+      "effective_to": null,
+      "payload": {
+        "relationship_id": "REL-5501",
+        "relationship_type": "PERSON_TO_ASSET",
+        "from_node_id": "PRSN-99021",
+        "to_node_id": "AST-VEH-99201",
+        "role": "Main_Driver",
+        "context_policy_id": "POL-MOTOR-001"
+      }
+    }
+  ],
+  "audit": {
+    "created_by": "system_auto",
+    "last_modified_by": "operator_john",
+    "last_modified_at": "2026-04-18T10:05:00Z",
+    "causation_id": "CMD-001",
+    "correlation_id": "CORR-001"
+  }
+}

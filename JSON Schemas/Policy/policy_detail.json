@@ -1,0 +1,154 @@
+{
+  "policy_meta": {
+    "policy_id": "POL-MOTOR-001",
+    "container_id": "CONT-7762",
+    "portfolio_id": "PORT-MOTOR-001",
+    "product_type": "Annual_Motor",
+    "version": 3,
+    "created_at": "2026-04-18T10:00:00Z",
+    "last_updated_at": "2026-04-18T14:30:00Z"
+  },
+  "policy_header": {
+    "policy_number": "POL88293",
+    "external_ids": {
+      "rtm_legacy_id": "RTM-9920-X",
+      "accounting_system_id": "GL-5541",
+      "edi_policy_number": "EDI-88293"
+    },
+    "status": "active",
+    "originator": "Broker_Direct_v2",
+    "business_source": "Direct_Online",
+    "agent_number": "AGT001",
+    "agent_code": "CODE123",
+    "broker_ref": "BRK-REF-001"
+  },
+  "terms": {
+    "start_date": "2026-04-18",
+    "end_date": "2027-04-17",
+    "duration_months": 12,
+    "effective_date": "2026-04-18",
+    "expiry_date": "2027-04-17",
+    "tenure": "Annual",
+    "scheme": "Standard_Motor",
+    "edi_scheme": "EDI-MOTOR-01",
+    "method_of_payment": "Credit_Card",
+    "manual_renewal_flag": false,
+    "lapse_flag": false,
+    "hold_flag": false,
+    "criminal_convictions_flag": false,
+    "policy_load": 0.0,
+    "net_gross_rated_flag": "Gross",
+    "mta_stop_flag": false,
+    "previous_terms_flag": true,
+    "last_change_date": "2026-04-18",
+    "last_operator": "operator_john",
+    "rfi": "No"
+  },
+  "no_claims_discount": {
+    "ncd_years": 5,
+    "ncd_percentage": 60,
+    "ncd_protected": true,
+    "ncd_proof": "Letter",
+    "ncd_affected_by_claims": false,
+    "last_ncd_change_date": "2026-01-01"
+  },
+  "legal_protection": {
+    "enabled": true,
+    "inception_date": "2026-04-18",
+    "cover_limit": 100000.00,
+    "excess_amount": 250.00,
+    "provider": "LegalProtect Ltd"
+  },
+  "financials": {
+    "premium_breakdown": {
+      "net_premium": 850.00,
+      "ipt_tax": 102.00,
+      "broker_commission": 85.00,
+      "system_fee": 25.00,
+      "total_payable": 1062.00
+    },
+    "excess_details": [
+      {
+        "type": "Standard",
+        "amount": 250.00,
+        "description": "Standard excess for comprehensive cover"
+      },
+      {
+        "type": "Voluntary",
+        "amount": 500.00,
+        "description": "Voluntary excess to reduce premium"
+      }
+    ],
+    "booked_premium": 1062.00,
+    "premium_batches": [
+      {
+        "batch_id": "BATCH-001",
+        "amount": 1062.00,
+        "due_date": "2026-04-25",
+        "status": "Pending"
+      }
+    ]
+  },
+  "asset_link": {
+    "asset_id": "AST-VEH-99201",
+    "asset_type": "Private_Motor_Vehicle",
+    "link_date": "2026-04-18",
+    "effective_from": "2026-04-18"
+  },
+  "policyholder": {
+    "party_id": "PRSN-99021",
+    "roles": ["Policyholder", "Payer"],
+    "relationship": "Owner"
+  },
+  "drivers": [
+    {
+      "party_id": "PRSN-99021",
+      "role": "Main_Driver",
+      "relationship_id": "REL-5501",
+      "effective_from": "2026-04-18",
+      "effective_to": null
+    },
+    {
+      "party_id": "PRSN-002",
+      "role": "Named_Driver",
+      "relationship_id": "REL-5502",
+      "effective_from": "2026-04-18",
+      "effective_to": null
+    }
+  ],
+  "endorsements": [
+    {
+      "endorsement_id": "END-001",
+      "type": "NO_CLAIMS_PROTECTION",
+      "description": "No Claims Discount Protection",
+      "effective_from": "2026-04-18",
+      "effective_to": "2027-04-17"
+    }
+  ],
+  "mid_term_adjustments": [
+    {
+      "mta_id": "MTA-001",
+      "event_type": "PolicyLegalProtectionChanged",
+      "effective_from": "2026-04-19",
+      "recorded_at": "2026-04-19T09:30:00Z",
+      "changes": {
+        "legal_protection": {
+          "old_value": false,
+          "new_value": true
+        },
+        "premium_adjustment": {
+          "old_total": 1062.00,
+          "new_total": 1168.20,
+          "difference": 106.20
+        }
+      },
+      "reason": "Customer added legal protection"
+    }
+  ],
+  "claims_summary": {
+    "total_claims": 1,
+    "open_claims": 0,
+    "total_reserve": 15000.00,
+    "total_paid": 5000.00
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "asset_meta": {
+    "asset_id": "AST-MC-001",
+    "asset_type": "Motorcycle",
+    "created_at": "2026-04-18T10:00:00Z",
+    "external_reference_id": "DVLA-VRM-X456"
+  },
+  "identification": {
+    "registration_number": "MC12XYZ",
+    "vin": "SMTTC3367GT123456",
+    "engine_number": "ENG-MC-001",
+    "is_imported": false,
+    "country_of_origin": "GB"
+  },
+  "specification": {
+    "make": "Triumph",
+    "model": "Street Triple",
+    "trim": "RS",
+    "bike_type": "Naked_Sport",
+    "engine_cc": 765,
+    "fuel_type": "Petrol",
+    "transmission": "Manual",
+    "manufacture_year": 2024,
+    "power_kw": 94,
+    "torque_nm": 79,
+    "dry_weight_kg": 166,
+    "seating_capacity": 1,
+    "color": "Crystal White"
+  },
+  "usage_and_risk": {
+    "estimated_annual_mileage": 5000,
+    "overnight_parking_location": "Locked_Garage",
+    "parking_postcode": "SW1A 1AA",
+    "purchased_date": "2024-06-01",
+    "purchase_price": 12000.00,
+    "current_market_value": 11000.00,
+    "primary_use": "Leisure",
+    "commuting_distance_miles": 0,
+    "track_days_per_year": 0,
+    "modifications": [
+      {
+        "type": "Exhaust",
+        "is_performance_enhancing": true,
+        "value": 800.00,
+        "description": "Aftermarket slip-on exhaust"
+      },
+      {
+        "type": "Suspension",
+        "is_performance_enhancing": true,
+        "value": 1200.00,
+        "description": "Upgraded front forks"
+      }
+    ]
+  },
+  "security_features": {
+    "alarm_type": "Thatcham_Category_2",
+    "tracker_fitted": true,
+    "dashcam_fitted": false,
+    "disk_lock_used": true,
+    "chain_lock_used": false,
+    "garaged_overnight": true
+  },
+  "safety_features": {
+    "abs": true,
+    "traction_control": true,
+    "riding_modes": ["Road", "Rain", "Sport"],
+    "quick_shifter": true,
+    "cruise_control": false,
+    "cornering_lights": false
+  },
+  "insurance_risk_attributes": {
+    "security_rating": "Medium",
+    "theft_risk": "Low",
+    "accident_risk": "Medium",
+    "driver_age_restriction": 25,
+    "no_claims_discount_years": 5
+  }
+}

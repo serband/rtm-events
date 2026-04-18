@@ -1,0 +1,49 @@
+{
+  "event_meta": {
+    "event_type": "PolicyLegalProtectionChanged",
+    "aggregate_type": "Policy",
+    "aggregate_id": "POL-MOTOR-001",
+    "version": 4,
+    "timestamp": "2026-04-19T09:30:00Z",
+    "originator_id": "CONT-7762",
+    "causation_id": "CMD-002",
+    "correlation_id": "CORR-001"
+  },
+  "payload": {
+    "legal_protection": {
+      "enabled": true,
+      "inception_date": "2026-04-19",
+      "cover_limit": 100000.00,
+      "excess_amount": 250.00
+    },
+    "premium_adjustment": {
+      "previous_total": 1062.00,
+      "new_total": 1168.20,
+      "difference": 106.20,
+      "reason": "Legal protection added"
+    },
+    "effective_from": "2026-04-19",
+    "reason": "Customer added legal protection",
+    "operator": "operator_john"
+  },
+  "business_context": {
+    "policy_id": "POL-MOTOR-001",
+    "container_id": "CONT-7762",
+    "portfolio_id": "PORT-MOTOR-001",
+    "asset_id": "AST-VEH-99201"
+  },
+  "state_snapshot": {
+    "before": {
+      "legal_protection": false,
+      "premium_total": 1062.00,
+      "ncd_years": 5,
+      "status": "active"
+    },
+    "after": {
+      "legal_protection": true,
+      "premium_total": 1168.20,
+      "ncd_years": 5,
+      "status": "active"
+    }
+  }
+}

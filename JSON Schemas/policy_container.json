@@ -1,0 +1,62 @@
+{
+  "policy_header": {
+    "policy_id": "POL-88293",
+    "version_number": 3,
+    "status": "active",
+    "originator": "Broker_Direct_v2",
+    "inception_date": "2026-04-18",
+    "expiry_date": "2027-04-17",
+    "external_ids": {
+      "rtm_legacy_id": "RTM-9920-X",
+      "accounting_system_id": "GL-5541"
+    }
+  },
+  "parties": [
+    {
+      "party_id": "PRSN-001",
+      "roles": ["Policyholder", "Payer"],
+      "name": "John Doe"
+    },
+    {
+      "party_id": "PRSN-002",
+      "roles": ["Named_Driver"],
+      "name": "Jane Doe"
+    }
+  ],
+  "assets": [
+    {
+      "asset_id": "AST-001",
+      "type": "Vehicle",
+      "attributes": {
+        "make": "Tesla",
+        "vin": "5YJ3E1EB",
+        "year": 2024
+      }
+    }
+  ],
+  "financials": {
+    "premium_breakdown": {
+      "net_premium": 850.00,
+      "ipt_tax": 102.00,
+      "broker_commission": 85.00,
+      "system_fee": 25.00,
+      "total_payable": 1062.00
+    },
+    "excess_details": [
+      {"type": "Standard", "amount": 250},
+      {"type": "Voluntary", "amount": 500}
+    ]
+  },
+  "claims_slots": [
+    {
+      "claim_id": "CLM-5521",
+      "source_system": "Claims_Pro_v1",
+      "latest_reserve_amount": 15000.00,
+      "last_updated": "2026-04-10"
+    }
+  ],
+  "conditions": {
+    "wording_version": "T&C_2026_v4",
+    "active_endorsements": ["NO_CLAIMS_PROTECTION"]
+  }
+}

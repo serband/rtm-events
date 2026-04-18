@@ -1,0 +1,45 @@
+{
+  "asset_meta": {
+    "asset_id": "AST-VEH-99201",
+    "asset_type": "Private_Motor_Vehicle",
+    "created_at": "2026-04-18T10:00:00Z",
+    "external_reference_id": "DVLA-VRM-X123"
+  },
+  "identification": {
+    "vrm": "AB12 CDE",
+    "vin": "1HGCM82635A029",
+    "engine_number": "ENG-992011",
+    "is_imported": false
+  },
+  "specification": {
+    "make": "Tesla",
+    "model": "Model 3",
+    "trim": "Long Range AWD",
+    "body_type": "Saloon",
+    "fuel_type": "Electric",
+    "transmission": "Automatic",
+    "engine_capacity_cc": 0,
+    "manufacture_year": 2024,
+    "number_of_seats": 5
+  },
+  "usage_and_risk": {
+    "estimated_annual_mileage": 10000,
+    "overnight_parking_location": "Locked_Garage",
+    "parking_postcode": "SW1A 1AA",
+    "purchased_date": "2024-05-01",
+    "purchase_price": 45000.00,
+    "current_market_value": 41000.00,
+    "modifications": [
+      {
+        "type": "Alloy_Wheels",
+        "is_performance_enhancing": false,
+        "value": 1200.00
+      }
+    ]
+  },
+  "security_features": {
+    "alarm_type": "Thatcham_Category_1",
+    "tracker_fitted": true,
+    "dashcam_fitted": true
+  }
+}

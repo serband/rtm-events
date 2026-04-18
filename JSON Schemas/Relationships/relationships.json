@@ -1,0 +1,23 @@
+{
+  "relationships": [
+    {
+      "type": "PERSON_TO_PERSON",
+      "subject": "PRSN-99021",
+      "relation": "Spouse_Of",
+      "object": "PRSN-002"
+    },
+    {
+      "type": "PERSON_TO_ASSET",
+      "subject": "PRSN-002",
+      "relation": "Named_Driver",
+      "object": "AST-VEH-123",
+      "context_policy_id": "POL-MOTOR-001"
+    },
+    {
+      "type": "PERSON_TO_POLICY",
+      "subject": "PRSN-887",
+      "relation": "Legal_Guardian",
+      "object": "POL-HOME-002"
+    }
+  ]
+}

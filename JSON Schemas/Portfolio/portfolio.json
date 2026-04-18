@@ -1,0 +1,24 @@
+{
+  "container_meta": {
+    "container_id": "CONT-7762",
+    "account_holder_id": "PRSN-99021",
+    "total_portfolio_premium": 1450.00
+  },
+  "policy_slots": [
+    {
+      "policy_id": "POL-MOTOR-001",
+      "type": "Annual_Motor",
+      "asset_id": "AST-VEH-123"
+    },
+    {
+      "policy_id": "POL-HOME-002",
+      "type": "Home_Contents",
+      "asset_id": "AST-ADDR-456"
+    },
+    {
+      "policy_id": "POL-TEMP-003",
+      "type": "Short_Term_Motor",
+      "asset_id": "AST-VEH-123"
+    }
+  ]
+}

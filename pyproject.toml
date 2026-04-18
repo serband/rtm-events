@@ -1,0 +1,17 @@
+[project]
+name = "rtm-events"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "eventsourcing-sqlalchemy>=1.0.1",
+    "eventsourcing[sqlalchemy]>=9.5.4",
+    "pandas>=3.0.2",
+    "streamlit>=1.56.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

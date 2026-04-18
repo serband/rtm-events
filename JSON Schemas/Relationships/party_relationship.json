@@ -1,0 +1,30 @@
+{
+  "relationship_meta": {
+    "relationship_id": "REL-5501",
+    "policy_container_id": "POL-88293",
+    "created_at": "2026-04-18T10:05:00Z"
+  },
+  "links": [
+    {
+      "subject_id": "PRSN-99021", 
+      "subject_type": "Person",
+      "relationship_type": "Main_Driver",
+      "object_id": "AST-VEH-99201",
+      "object_type": "Vehicle",
+      "attributes": {
+        "use_type": "Social_and_Commuting",
+        "has_owners_permission": true
+      }
+    },
+    {
+      "subject_id": "PRSN-002",
+      "subject_type": "Person",
+      "relationship_type": "Named_Driver",
+      "object_id": "AST-VEH-99201",
+      "object_type": "Vehicle",
+      "attributes": {
+        "use_type": "Social_Only"
+      }
+    }
+  ]
+}
