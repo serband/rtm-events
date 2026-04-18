@@ -7,7 +7,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from typing import Any, Dict, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from eventsourcing.application import Application
 
@@ -295,6 +295,103 @@ class InsuranceGraphApplication(Application):
         )
         self.save(policy)
 
+    def cancel_policy(
+        self,
+        container_id: UUID,
+        policy_id: str,
+        effective_from: str,
+        reason: str,
+    ) -> None:
+        self.change_policy_status(
+            container_id=container_id,
+            policy_id=policy_id,
+            new_status="cancelled",
+            effective_from=effective_from,
+            reason=reason,
+        )
+        self._end_policy_context_relationships(
+            container_id=container_id,
+            policy_id=policy_id,
+            effective_to=effective_from,
+        )
+
+    def create_policy_renewal(
+        self,
+        container_id: UUID,
+        source_policy_id: str,
+        new_policy_id: str,
+        renewal_start_date: str,
+        renewal_end_date: str,
+        premium_amount: float,
+        ipt_amount: float,
+        excess_amount: float,
+        ncd_years: int,
+        legal_protection: bool,
+        reason: str,
+    ) -> UUID:
+        source_policy = self.get_policy(container_id, source_policy_id)
+        source_snapshot = self.get_container_snapshot(container_id)
+        active_context_relationships = [
+            rel
+            for rel in source_snapshot["relationships"]
+            if rel.get("context_policy_id") == source_policy_id
+            and (rel.get("effective_to") is None or parse_iso_date(rel["effective_to"]) > parse_iso_date(renewal_start_date))
+        ]
+
+        self.change_policy_status(
+            container_id=container_id,
+            policy_id=source_policy_id,
+            new_status="renewed",
+            effective_from=renewal_start_date,
+            reason=reason,
+        )
+        self._end_policy_context_relationships(
+            container_id=container_id,
+            policy_id=source_policy_id,
+            effective_to=renewal_start_date,
+        )
+
+        new_policy_uuid = self.create_policy(
+            container_id=container_id,
+            policy_id=new_policy_id,
+            portfolio_id=source_policy.portfolio_id,
+            product_type=source_policy.product_type,
+            start_date=renewal_start_date,
+            end_date=renewal_end_date,
+            duration_months=source_policy.terms["duration_months"],
+            premium_amount=premium_amount,
+            ipt_amount=ipt_amount,
+            excess_amount=excess_amount,
+            ncd_years=ncd_years,
+            legal_protection=legal_protection,
+            status="active",
+        )
+
+        if source_policy.asset_id:
+            self.link_policy_to_asset(
+                container_id=container_id,
+                policy_id=new_policy_id,
+                asset_id=source_policy.asset_id,
+                effective_from=renewal_start_date,
+            )
+
+        for rel in active_context_relationships:
+            to_node_id = rel["to_node_id"]
+            if rel["relationship_type"] == "party_to_policy" and to_node_id == source_policy_id:
+                to_node_id = new_policy_id
+            self.start_relationship(
+                container_id=container_id,
+                relationship_id=f"REL-{uuid4().hex[:10].upper()}",
+                relationship_type=rel["relationship_type"],
+                from_node_id=rel["from_node_id"],
+                to_node_id=to_node_id,
+                role=rel["role"],
+                effective_from=renewal_start_date,
+                context_policy_id=new_policy_id,
+            )
+
+        return new_policy_uuid
+
     def get_container(self, container_id: UUID, version: Optional[int] = None) -> PolicyContainer:
         return self.repository.get(container_id, version=version)
 
@@ -352,6 +449,26 @@ class InsuranceGraphApplication(Application):
         ]
         snapshot["as_of_date"] = as_of_date
         return snapshot
+
+    def _end_policy_context_relationships(
+        self,
+        container_id: UUID,
+        policy_id: str,
+        effective_to: str,
+    ) -> None:
+        snapshot = self.get_container_snapshot(container_id)
+        active_relationships = [
+            rel
+            for rel in snapshot["relationships"]
+            if rel.get("context_policy_id") == policy_id
+            and (rel.get("effective_to") is None or parse_iso_date(rel["effective_to"]) > parse_iso_date(effective_to))
+        ]
+        for rel in active_relationships:
+            self.end_relationship(
+                container_id=container_id,
+                relationship_id=rel["relationship_id"],
+                effective_to=effective_to,
+            )
 
     def _build_snapshot(self, container: PolicyContainer) -> Dict[str, Any]:
         policies = {

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from html import escape
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -12,7 +12,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from eventsourcing.utils import clear_topic_cache
 
-from application import InsuranceGraphApplication
+from application import InsuranceGraphApplication, parse_iso_date
 from scenario_generator import apply_scenario, generate_complex_scenario
 
 
@@ -70,10 +70,14 @@ def iso_from_date(value: date, hour: int = 12) -> str:
 
 def one_year_from_today() -> date:
     today = date.today()
+    return one_year_from_date(today)
+
+
+def one_year_from_date(value: date) -> date:
     try:
-        return today.replace(year=today.year + 1)
+        return value.replace(year=value.year + 1)
     except ValueError:
-        return today.replace(month=2, day=28, year=today.year + 1)
+        return value.replace(month=2, day=28, year=value.year + 1)
 
 
 def get_app() -> InsuranceGraphApplication:
@@ -604,141 +608,162 @@ def render_explorer(snapshot: Dict[str, Any]) -> None:
 
 def render_actions(container_uuid: UUID, snapshot: Dict[str, Any]) -> None:
     st.subheader("Actions")
-    st.caption("Build structure on the left. Change existing data on the right.")
-    portfolios = list(snapshot["portfolios"].keys())
+    st.caption("Use insurance workflows instead of low-level graph edits.")
     assets = list(snapshot["assets"].keys())
     policies = list(snapshot["policies"].keys())
     parties = list(snapshot["parties"].keys())
     relationship_ids = [relationship["relationship_id"] for relationship in snapshot["relationships"]]
     node_options = parties + assets + policies
+    if not policies:
+        st.info("Generate a complex scenario first. The workflow actions operate on existing policies.")
+        return
 
-    left, right = st.columns(2)
-    with left:
-        with st.expander("1. Add Portfolio Or Party", expanded=True):
-            portfolio_col, party_col = st.columns(2)
-            with portfolio_col:
-                with st.form("portfolio_form", clear_on_submit=True):
-                    portfolio_id = st.text_input("Portfolio ID", key="portfolio_id")
-                    portfolio_type = st.selectbox("Portfolio Type", options=["motor", "motorcycle", "home", "contents", "mixed"], key="portfolio_type")
-                    display_name = st.text_input("Display Name", key="portfolio_display_name")
-                    if st.form_submit_button("Add Portfolio", use_container_width=True):
-                        get_app().add_portfolio(container_uuid, portfolio_id, portfolio_type, display_name or None)
-                        st.success(f"Added portfolio {portfolio_id}.")
-            with party_col:
-                with st.form("party_form", clear_on_submit=True):
-                    party_id = st.text_input("Party ID", key="party_id")
-                    party_type = st.selectbox("Party Type", options=["Individual", "Company"], key="party_type")
-                    first_name = st.text_input("First Name", key="party_first_name")
-                    last_name = st.text_input("Last Name", key="party_last_name")
-                    dob = st.date_input("Date of Birth", value=date(1985, 5, 5), key="party_dob")
-                    email = st.text_input("Email", key="party_email")
-                    phone = st.text_input("Phone", key="party_phone")
-                    licence_points = st.number_input("Licence Points", min_value=0, step=1, key="party_licence_points")
-                    if st.form_submit_button("Register Party", use_container_width=True):
-                        get_app().register_party(
-                            container_id=container_uuid,
-                            party_id=party_id,
-                            identity={"first_name": first_name, "last_name": last_name, "dob": dob.isoformat()},
-                            contact_details={"email": email, "phone": phone},
-                            risk_profile={"licence_points": int(licence_points)},
-                            party_type=party_type,
-                        )
-                        st.success(f"Registered party {party_id}.")
+    selected_policy_id = st.selectbox(
+        "Working Policy",
+        options=policies,
+        key="actions_selected_policy",
+    )
+    selected_policy = snapshot["policies"][selected_policy_id]
+    selected_terms = selected_policy["terms"]
+    selected_financials = selected_policy["financials"]
+    selected_start = parse_iso_date(selected_terms["start_date"]).date()
+    selected_end = parse_iso_date(selected_terms["end_date"]).date()
 
-        with st.expander("2. Add Asset Or Policy", expanded=True):
-            asset_col, policy_col = st.columns(2)
-            with asset_col:
-                with st.form("asset_form", clear_on_submit=True):
-                    asset_id = st.text_input("Asset ID", key="asset_id")
-                    asset_type = st.selectbox("Asset Type", options=["vehicle", "motorcycle", "home"], key="asset_type")
-                    vin_or_ref = st.text_input("VIN / UPRN", key="asset_identifier")
-                    registration = st.text_input("Registration", key="asset_registration")
-                    make = st.text_input("Make", key="asset_make")
-                    model = st.text_input("Model", key="asset_model")
-                    engine_cc = st.number_input("Engine CC", min_value=0, step=50, key="asset_engine_cc")
-                    address = st.text_input("Property Address", key="asset_address")
-                    garaging_postcode = st.text_input("Garaging / Risk Postcode", key="asset_postcode")
-                    if st.form_submit_button("Register Asset", use_container_width=True):
-                        get_app().register_asset(
-                            container_id=container_uuid,
-                            asset_id=asset_id,
-                            asset_type=asset_type,
-                            identification={"primary_reference": vin_or_ref, "registration_number": registration},
-                            specification={k: v for k, v in {"make": make, "model": model, "engine_cc": int(engine_cc) if engine_cc else None, "address": address}.items() if v not in ("", None)},
-                            risk_attributes={k: v for k, v in {"location_postcode": garaging_postcode}.items() if v},
-                        )
-                        st.success(f"Registered asset {asset_id}.")
-            with policy_col:
-                with st.form("policy_form", clear_on_submit=True):
-                    policy_id = st.text_input("Policy ID", key="policy_id")
-                    portfolio_id = st.selectbox("Portfolio", options=portfolios if portfolios else ["<create portfolio first>"], key="policy_portfolio_id")
-                    asset_id = st.selectbox("Linked Asset", options=assets if assets else ["<register asset first>"], key="policy_asset_id")
-                    product_type = st.selectbox("Product Type", options=["motor", "motorcycle", "home", "contents"], key="policy_product_type")
-                    start = st.date_input("Start Date", value=date.today(), key="policy_start")
-                    end = st.date_input("End Date", value=one_year_from_today(), key="policy_end")
-                    duration_months = st.number_input("Duration (Months)", min_value=1, step=1, value=12, key="policy_duration")
-                    premium_amount = st.number_input("Premium", min_value=0.0, step=25.0, value=900.0, key="policy_premium")
-                    ipt_amount = st.number_input("IPT", min_value=0.0, step=5.0, value=90.0, key="policy_ipt")
-                    excess_amount = st.number_input("Excess", min_value=0.0, step=50.0, value=250.0, key="policy_excess")
-                    ncd_years = st.number_input("NCD Years", min_value=0, step=1, value=0, key="policy_ncd")
-                    legal_protection = st.checkbox("Legal Protection", key="policy_legal_protection")
-                    if st.form_submit_button("Create Policy", use_container_width=True):
-                        if not portfolios or portfolio_id.startswith("<"):
-                            st.error("Create a portfolio first.")
-                        elif not assets or asset_id.startswith("<"):
-                            st.error("Register an asset first.")
-                        else:
-                            app = get_app()
-                            effective = iso_from_date(start, hour=9)
-                            app.create_policy(
-                                container_id=container_uuid,
-                                policy_id=policy_id,
-                                portfolio_id=portfolio_id,
-                                product_type=product_type,
-                                start_date=effective,
-                                end_date=iso_from_date(end, hour=23),
-                                duration_months=int(duration_months),
-                                premium_amount=float(premium_amount),
-                                ipt_amount=float(ipt_amount),
-                                excess_amount=float(excess_amount),
-                                ncd_years=int(ncd_years),
-                                legal_protection=legal_protection,
-                            )
-                            app.link_policy_to_asset(container_uuid, policy_id, asset_id, effective)
-                            st.success(f"Created policy {policy_id}.")
+    summary_cols = st.columns(5)
+    summary_cols[0].metric("Product", selected_policy["product_type"].title())
+    summary_cols[1].metric("Status", selected_policy["status"].title())
+    summary_cols[2].metric("Premium", f"£{selected_financials['total_payable']:.2f}")
+    summary_cols[3].metric("Asset", selected_policy.get("asset_id") or "Unlinked")
+    summary_cols[4].metric("Version", str(selected_policy["version"]))
 
-    with right:
-        with st.expander("3. Start Or End Relationship", expanded=True):
-            rel_start, rel_end = st.columns(2)
-            with rel_start:
-                with st.form("start_relationship_form", clear_on_submit=True):
+    workflow_tabs = st.tabs(
+        [
+            "Create Renewal",
+            "Mid-Term Adjustment",
+            "Cancellation",
+            "Backdate Changes",
+        ]
+    )
+
+    with workflow_tabs[0]:
+        st.caption("Create the next contract from the selected policy and carry forward its context.")
+        suggested_start = selected_end + timedelta(days=1)
+        suggested_end = one_year_from_date(suggested_start)
+        with st.form("renewal_workflow_form", clear_on_submit=True):
+            new_policy_id = st.text_input("New Policy ID", value=f"{selected_policy_id}-REN", key="renewal_new_policy_id")
+            renewal_start = st.date_input("Renewal Start Date", value=suggested_start, key="renewal_start_date")
+            renewal_end = st.date_input("Renewal End Date", value=suggested_end, key="renewal_end_date")
+            renewal_premium = st.number_input("Renewal Premium", min_value=0.0, step=25.0, value=float(selected_financials["premium_amount"]), key="renewal_premium")
+            renewal_ipt = st.number_input("Renewal IPT", min_value=0.0, step=5.0, value=float(selected_financials["ipt_amount"]), key="renewal_ipt")
+            renewal_excess = st.number_input("Renewal Excess", min_value=0.0, step=50.0, value=float(selected_financials["excess_amount"]), key="renewal_excess")
+            renewal_ncd = st.number_input("Renewal NCD Years", min_value=0, step=1, value=int(selected_terms["ncd_years"]), key="renewal_ncd")
+            renewal_legal = st.checkbox("Carry Legal Protection", value=bool(selected_terms["legal_protection"]), key="renewal_legal")
+            renewal_reason = st.text_input("Reason", value="Annual renewal created", key="renewal_reason")
+            if st.form_submit_button("Create Renewal", use_container_width=True):
+                get_app().create_policy_renewal(
+                    container_id=container_uuid,
+                    source_policy_id=selected_policy_id,
+                    new_policy_id=new_policy_id,
+                    renewal_start_date=iso_from_date(renewal_start, hour=0),
+                    renewal_end_date=iso_from_date(renewal_end, hour=23),
+                    premium_amount=float(renewal_premium),
+                    ipt_amount=float(renewal_ipt),
+                    excess_amount=float(renewal_excess),
+                    ncd_years=int(renewal_ncd),
+                    legal_protection=renewal_legal,
+                    reason=renewal_reason,
+                )
+                st.success(f"Created renewal policy {new_policy_id}.")
+
+    with workflow_tabs[1]:
+        st.caption("Apply a mid-term adjustment to premium, NCD, legal protection, or status.")
+        with st.form("mta_workflow_form", clear_on_submit=True):
+            mta_date = st.date_input("MTA Effective Date", value=date.today(), key="mta_date")
+            new_premium = st.number_input("New Premium", min_value=0.0, step=25.0, value=float(selected_financials["premium_amount"]), key="mta_new_premium")
+            new_ipt = st.number_input("New IPT", min_value=0.0, step=5.0, value=float(selected_financials["ipt_amount"]), key="mta_new_ipt")
+            legal_protection = st.checkbox("Legal Protection", value=bool(selected_terms["legal_protection"]), key="mta_legal_protection")
+            ncd_years = st.number_input("NCD Years", min_value=0, step=1, value=int(selected_terms["ncd_years"]), key="mta_ncd_years")
+            new_status = st.selectbox("Status After MTA", options=["active", "pending", "renewed"], index=0 if selected_policy["status"] == "active" else 1, key="mta_status")
+            reason = st.text_input("Reason", value="Mid-term adjustment", key="mta_reason")
+            if st.form_submit_button("Apply MTA", use_container_width=True):
+                app = get_app()
+                effective = iso_from_date(mta_date, hour=10)
+                app.adjust_policy_premium(container_uuid, selected_policy_id, float(new_premium), float(new_ipt), effective, reason)
+                app.change_policy_legal_protection(container_uuid, selected_policy_id, legal_protection, effective, reason)
+                app.change_policy_no_claims_discount(container_uuid, selected_policy_id, int(ncd_years), effective, reason)
+                app.change_policy_status(container_uuid, selected_policy_id, new_status, effective, reason)
+                st.success(f"Applied MTA to {selected_policy_id}.")
+
+    with workflow_tabs[2]:
+        st.caption("Cancel the selected policy and end its active policy-context relationships.")
+        with st.form("cancellation_workflow_form", clear_on_submit=True):
+            cancel_date = st.date_input("Cancellation Date", value=date.today(), key="cancel_date")
+            cancel_reason = st.text_input("Reason", value="Customer requested cancellation", key="cancel_reason")
+            if st.form_submit_button("Cancel Policy", use_container_width=True):
+                get_app().cancel_policy(
+                    container_id=container_uuid,
+                    policy_id=selected_policy_id,
+                    effective_from=iso_from_date(cancel_date, hour=12),
+                    reason=cancel_reason,
+                )
+                st.success(f"Cancelled {selected_policy_id}.")
+
+    with workflow_tabs[3]:
+        st.caption("Apply a backdated policy or relationship change to test historical views.")
+        backdate_mode = st.radio(
+            "Backdate Mode",
+            options=["Policy Change", "Relationship Change"],
+            horizontal=True,
+            key="backdate_mode",
+        )
+        if backdate_mode == "Policy Change":
+            with st.form("backdated_policy_form", clear_on_submit=True):
+                backdate = st.date_input("Backdated Effective Date", value=max(selected_start, date.today() - timedelta(days=30)), key="backdate_policy_date")
+                backdated_premium = st.number_input("Backdated Premium", min_value=0.0, step=25.0, value=float(selected_financials["premium_amount"]), key="backdated_premium")
+                backdated_ipt = st.number_input("Backdated IPT", min_value=0.0, step=5.0, value=float(selected_financials["ipt_amount"]), key="backdated_ipt")
+                backdated_legal = st.checkbox("Backdated Legal Protection", value=bool(selected_terms["legal_protection"]), key="backdated_legal")
+                backdated_ncd = st.number_input("Backdated NCD Years", min_value=0, step=1, value=int(selected_terms["ncd_years"]), key="backdated_ncd")
+                backdated_reason = st.text_input("Reason", value="Backdated correction", key="backdated_reason")
+                if st.form_submit_button("Apply Backdated Policy Change", use_container_width=True):
+                    app = get_app()
+                    effective = iso_from_date(backdate, hour=10)
+                    app.adjust_policy_premium(container_uuid, selected_policy_id, float(backdated_premium), float(backdated_ipt), effective, backdated_reason)
+                    app.change_policy_legal_protection(container_uuid, selected_policy_id, backdated_legal, effective, backdated_reason)
+                    app.change_policy_no_claims_discount(container_uuid, selected_policy_id, int(backdated_ncd), effective, backdated_reason)
+                    st.success(f"Applied backdated policy change to {selected_policy_id}.")
+        else:
+            relationship_mode = st.radio(
+                "Relationship Action",
+                options=["Start Relationship", "End Relationship"],
+                horizontal=True,
+                key="backdate_relationship_mode",
+            )
+            if relationship_mode == "Start Relationship":
+                with st.form("backdated_relationship_start_form", clear_on_submit=True):
                     relationship_id = st.text_input("Relationship ID", key="relationship_id")
                     relationship_type = st.selectbox("Relationship Type", options=["party_to_policy", "party_to_asset", "party_to_party", "policy_to_asset"], key="relationship_type")
                     from_node_id = st.selectbox("From Node", options=node_options or ["<create nodes first>"], key="relationship_from")
                     to_node_id = st.selectbox("To Node", options=node_options or ["<create nodes first>"], key="relationship_to")
                     role = st.text_input("Role", value="NamedDriver", key="relationship_role")
-                    context_policy_id = st.selectbox("Context Policy", options=[""] + policies, key="relationship_policy_context")
-                    effective_from = st.date_input("Effective From", value=date.today(), key="relationship_effective_from")
-                    if st.form_submit_button("Start", use_container_width=True):
-                        if not node_options:
-                            st.error("Create parties, assets, or policies first.")
-                        else:
-                            get_app().start_relationship(
-                                container_id=container_uuid,
-                                relationship_id=relationship_id,
-                                relationship_type=relationship_type,
-                                from_node_id=from_node_id,
-                                to_node_id=to_node_id,
-                                role=role,
-                                effective_from=iso_from_date(effective_from, hour=9),
-                                context_policy_id=context_policy_id or None,
-                            )
-                            st.success(f"Started relationship {relationship_id}.")
-            with rel_end:
-                with st.form("end_relationship_form", clear_on_submit=True):
+                    context_policy_id = st.selectbox("Context Policy", options=[""] + policies, index=(policies.index(selected_policy_id) + 1) if selected_policy_id in policies else 0, key="relationship_policy_context")
+                    effective_from = st.date_input("Backdated Effective From", value=max(selected_start, date.today() - timedelta(days=45)), key="relationship_effective_from")
+                    if st.form_submit_button("Start Backdated Relationship", use_container_width=True):
+                        get_app().start_relationship(
+                            container_id=container_uuid,
+                            relationship_id=relationship_id,
+                            relationship_type=relationship_type,
+                            from_node_id=from_node_id,
+                            to_node_id=to_node_id,
+                            role=role,
+                            effective_from=iso_from_date(effective_from, hour=9),
+                            context_policy_id=context_policy_id or None,
+                        )
+                        st.success(f"Started relationship {relationship_id}.")
+            else:
+                with st.form("backdated_relationship_end_form", clear_on_submit=True):
                     relationship_id = st.selectbox("Relationship To End", options=relationship_ids if relationship_ids else ["<no relationships yet>"], key="relationship_end_id")
-                    effective_to = st.date_input("Effective To", value=date.today(), key="relationship_effective_to")
-                    if st.form_submit_button("End", use_container_width=True):
+                    effective_to = st.date_input("Backdated Effective To", value=date.today() - timedelta(days=7), key="relationship_effective_to")
+                    if st.form_submit_button("End Backdated Relationship", use_container_width=True):
                         if not relationship_ids:
                             st.error("No relationships available.")
                         else:
@@ -748,28 +773,6 @@ def render_actions(container_uuid: UUID, snapshot: Dict[str, Any]) -> None:
                                 effective_to=iso_from_date(effective_to, hour=18),
                             )
                             st.success(f"Ended relationship {relationship_id}.")
-
-        with st.expander("4. Apply Policy MTA", expanded=True):
-            with st.form("premium_mta_form", clear_on_submit=True):
-                policy_id = st.selectbox("Policy", options=policies if policies else ["<create a policy first>"], key="mta_policy_id")
-                effective_from = st.date_input("MTA Date", value=date.today(), key="mta_date")
-                new_premium = st.number_input("New Premium", min_value=0.0, step=25.0, value=1000.0, key="mta_new_premium")
-                new_ipt = st.number_input("New IPT", min_value=0.0, step=5.0, value=100.0, key="mta_new_ipt")
-                legal_protection = st.checkbox("Enable Legal Protection", key="mta_legal_protection")
-                ncd_years = st.number_input("Updated NCD Years", min_value=0, step=1, value=0, key="mta_ncd_years")
-                new_status = st.selectbox("Status", options=["active", "pending", "cancelled", "lapsed", "renewed"], key="mta_status")
-                reason = st.text_input("Reason", value="User-driven MTA", key="mta_reason")
-                if st.form_submit_button("Apply MTA", use_container_width=True):
-                    if not policies:
-                        st.error("Create a policy first.")
-                    else:
-                        app = get_app()
-                        effective = iso_from_date(effective_from, hour=10)
-                        app.adjust_policy_premium(container_uuid, policy_id, float(new_premium), float(new_ipt), effective, reason)
-                        app.change_policy_legal_protection(container_uuid, policy_id, legal_protection, effective, reason)
-                        app.change_policy_no_claims_discount(container_uuid, policy_id, int(ncd_years), effective, reason)
-                        app.change_policy_status(container_uuid, policy_id, new_status, effective, reason)
-                        st.success(f"Applied MTA to {policy_id}.")
 
 
 def render_history(snapshot: Dict[str, Any], container_uuid: UUID) -> None:
