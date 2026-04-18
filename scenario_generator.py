@@ -356,20 +356,40 @@ def generate_complex_scenario(seed: Optional[int] = None) -> Dict[str, Any]:
         generate_policy_json(home_policy_id, home_portfolio_id, "home", home_asset_id, start_base - timedelta(days=20), rng),
     ]
 
+    policyholder_rel_id = make_id("REL", rng)
+    payer_rel_id = make_id("REL", rng)
+    keeper_rel_id = make_id("REL", rng)
+    spouse_main_driver_rel_id = make_id("REL", rng)
+    child_named_driver_rel_id = make_id("REL", rng)
+    bike_policyholder_rel_id = make_id("REL", rng)
+    bike_main_rider_rel_id = make_id("REL", rng)
+    home_holder_rel_id = make_id("REL", rng)
+    home_joint_rel_id = make_id("REL", rng)
+    spouse_rel_id = make_id("REL", rng)
+    child_rel_id = make_id("REL", rng)
+    friend_occasional_rel_id = make_id("REL", rng)
+    holder_main_driver_rel_id = make_id("REL", rng)
+    friend_named_driver_rel_id = make_id("REL", rng)
+
     relationships = [
-        generate_relationship_json(make_id("REL", rng), "party_to_policy", holder_id, motor_policy_id, "Policyholder", policies[0]["start_date"], motor_policy_id),
-        generate_relationship_json(make_id("REL", rng), "party_to_policy", holder_id, motor_policy_id, "Payer", policies[0]["start_date"], motor_policy_id),
-        generate_relationship_json(make_id("REL", rng), "party_to_asset", holder_id, car_asset_id, "RegisteredKeeper", policies[0]["start_date"], motor_policy_id),
-        generate_relationship_json(make_id("REL", rng), "party_to_asset", spouse_id, car_asset_id, "MainDriver", policies[0]["start_date"], motor_policy_id),
-        generate_relationship_json(make_id("REL", rng), "party_to_asset", child_id, car_asset_id, "NamedDriver", iso_at(start_base + timedelta(days=45), 9), motor_policy_id),
-        generate_relationship_json(make_id("REL", rng), "party_to_policy", holder_id, bike_policy_id, "Policyholder", policies[1]["start_date"], bike_policy_id),
-        generate_relationship_json(make_id("REL", rng), "party_to_asset", holder_id, bike_asset_id, "MainRider", policies[1]["start_date"], bike_policy_id),
-        generate_relationship_json(make_id("REL", rng), "party_to_policy", holder_id, home_policy_id, "Policyholder", policies[2]["start_date"], home_policy_id),
-        generate_relationship_json(make_id("REL", rng), "party_to_policy", spouse_id, home_policy_id, "JointPolicyholder", policies[2]["start_date"], home_policy_id),
-        generate_relationship_json(make_id("REL", rng), "party_to_party", holder_id, spouse_id, "Spouse", policies[2]["start_date"]),
-        generate_relationship_json(make_id("REL", rng), "party_to_party", holder_id, child_id, "Child", policies[2]["start_date"]),
-        generate_relationship_json(make_id("REL", rng), "party_to_asset", friend_id, car_asset_id, "OccasionalDriver", iso_at(start_base + timedelta(days=70), 9), motor_policy_id),
+        generate_relationship_json(policyholder_rel_id, "party_to_policy", holder_id, motor_policy_id, "Policyholder", policies[0]["start_date"], motor_policy_id),
+        generate_relationship_json(payer_rel_id, "party_to_policy", holder_id, motor_policy_id, "Payer", policies[0]["start_date"], motor_policy_id),
+        generate_relationship_json(keeper_rel_id, "party_to_asset", holder_id, car_asset_id, "RegisteredKeeper", policies[0]["start_date"], motor_policy_id),
+        generate_relationship_json(spouse_main_driver_rel_id, "party_to_asset", spouse_id, car_asset_id, "MainDriver", policies[0]["start_date"], motor_policy_id),
+        generate_relationship_json(child_named_driver_rel_id, "party_to_asset", child_id, car_asset_id, "NamedDriver", iso_at(start_base + timedelta(days=45), 9), motor_policy_id),
+        generate_relationship_json(bike_policyholder_rel_id, "party_to_policy", holder_id, bike_policy_id, "Policyholder", policies[1]["start_date"], bike_policy_id),
+        generate_relationship_json(bike_main_rider_rel_id, "party_to_asset", holder_id, bike_asset_id, "MainRider", policies[1]["start_date"], bike_policy_id),
+        generate_relationship_json(home_holder_rel_id, "party_to_policy", holder_id, home_policy_id, "Policyholder", policies[2]["start_date"], home_policy_id),
+        generate_relationship_json(home_joint_rel_id, "party_to_policy", spouse_id, home_policy_id, "JointPolicyholder", policies[2]["start_date"], home_policy_id),
+        generate_relationship_json(spouse_rel_id, "party_to_party", holder_id, spouse_id, "Spouse", policies[2]["start_date"]),
+        generate_relationship_json(child_rel_id, "party_to_party", holder_id, child_id, "Child", policies[2]["start_date"]),
+        generate_relationship_json(friend_occasional_rel_id, "party_to_asset", friend_id, car_asset_id, "OccasionalDriver", iso_at(start_base + timedelta(days=70), 9), motor_policy_id),
     ]
+
+    spouse_driver_change_date = iso_at(start_base + timedelta(days=96), 10)
+    child_driver_end_date = iso_at(start_base + timedelta(days=133), 18)
+    friend_named_driver_start_date = iso_at(start_base + timedelta(days=149), 9)
+    occasional_driver_end_date = iso_at(start_base + timedelta(days=122), 18)
 
     history = [
         {
@@ -421,16 +441,67 @@ def generate_complex_scenario(seed: Optional[int] = None) -> Dict[str, Any]:
         },
         {
             "event_type": "RelationshipEnded",
-            "relationship_id": relationships[-1]["relationship_id"],
-            "effective_to": iso_at(start_base + timedelta(days=122), 18),
+            "relationship_id": friend_occasional_rel_id,
+            "effective_to": occasional_driver_end_date,
+        },
+        {
+            "event_type": "RelationshipEnded",
+            "relationship_id": spouse_main_driver_rel_id,
+            "effective_to": spouse_driver_change_date,
+        },
+        {
+            "event_type": "RelationshipStarted",
+            "relationship": generate_relationship_json(
+                holder_main_driver_rel_id,
+                "party_to_asset",
+                holder_id,
+                car_asset_id,
+                "MainDriver",
+                spouse_driver_change_date,
+                motor_policy_id,
+            ),
+        },
+        {
+            "event_type": "RelationshipEnded",
+            "relationship_id": child_named_driver_rel_id,
+            "effective_to": child_driver_end_date,
+        },
+        {
+            "event_type": "RelationshipStarted",
+            "relationship": generate_relationship_json(
+                friend_named_driver_rel_id,
+                "party_to_asset",
+                friend_id,
+                car_asset_id,
+                "NamedDriver",
+                friend_named_driver_start_date,
+                motor_policy_id,
+            ),
         },
     ]
+
+    timeline_markers = sorted(
+        {
+            policies[2]["start_date"][:10],
+            policies[0]["start_date"][:10],
+            policies[1]["start_date"][:10],
+            iso_at(start_base + timedelta(days=32), 10)[:10],
+            iso_at(start_base + timedelta(days=45), 9)[:10],
+            iso_at(start_base + timedelta(days=58), 10)[:10],
+            iso_at(start_base + timedelta(days=70), 9)[:10],
+            spouse_driver_change_date[:10],
+            occasional_driver_end_date[:10],
+            child_driver_end_date[:10],
+            friend_named_driver_start_date[:10],
+        }
+    )
 
     return {
         "meta": {
             "seed": scenario_seed,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "description": "Cross-product household with motor, motorcycle, and home coverage.",
+            "timeline_markers": timeline_markers,
         },
         "container": {
             "container_id": container_code,
@@ -568,6 +639,19 @@ def apply_scenario(app: InsuranceGraphApplication, scenario: Dict[str, Any]) -> 
                 container_id=container_uuid,
                 relationship_id=event["relationship_id"],
                 effective_to=event["effective_to"],
+            )
+        elif event_type == "RelationshipStarted":
+            relationship = event["relationship"]
+            app.start_relationship(
+                container_id=container_uuid,
+                relationship_id=relationship["relationship_id"],
+                relationship_type=relationship["relationship_type"],
+                from_node_id=relationship["from_node_id"],
+                to_node_id=relationship["to_node_id"],
+                role=relationship["role"],
+                effective_from=relationship["effective_from"],
+                context_policy_id=relationship.get("context_policy_id"),
+                effective_to=relationship.get("effective_to"),
             )
         else:
             raise ValueError(f"Unsupported history event: {event_type}")

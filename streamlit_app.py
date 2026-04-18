@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+from html import escape
 from datetime import date, datetime, time, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import streamlit as st
+import streamlit.components.v1 as components
 from eventsourcing.utils import clear_topic_cache
 
 from application import InsuranceGraphApplication
@@ -315,6 +317,160 @@ def relationship_rows(snapshot: Dict[str, Any]) -> List[Dict[str, Any]]:
     ]
 
 
+def node_label(snapshot: Dict[str, Any], node_id: str) -> str:
+    if node_id in snapshot["parties"]:
+        identity = snapshot["parties"][node_id].get("identity", {})
+        return f"{identity.get('first_name', '')} {identity.get('last_name', '')}".strip() or node_id
+    if node_id in snapshot["policies"]:
+        policy = snapshot["policies"][node_id]
+        return f"{policy.get('product_type', 'policy').title()} {node_id}"
+    if node_id in snapshot["assets"]:
+        asset = snapshot["assets"][node_id]
+        spec = asset.get("specification", {})
+        ident = asset.get("identification", {})
+        return spec.get("model") or spec.get("property_style") or ident.get("registration_number") or node_id
+    return node_id
+
+
+def evenly_spaced_positions(node_ids: List[str], x: int, top: int, bottom: int) -> Dict[str, tuple[int, int]]:
+    if not node_ids:
+        return {}
+    if len(node_ids) == 1:
+        return {node_ids[0]: (x, (top + bottom) // 2)}
+    gap = (bottom - top) / (len(node_ids) - 1)
+    return {
+        node_id: (x, int(top + idx * gap))
+        for idx, node_id in enumerate(node_ids)
+    }
+
+
+def build_relationship_svg(snapshot: Dict[str, Any], title: str) -> str:
+    parties = list(snapshot["parties"].keys())
+    policies = list(snapshot["policies"].keys())
+    assets = list(snapshot["assets"].keys())
+    height = max(420, 170 + max(len(parties), len(policies), len(assets), 1) * 110)
+    width = 1100
+    node_width = 180
+    node_height = 54
+    top = 100
+    bottom = height - 70
+
+    party_pos = evenly_spaced_positions(parties, 150, top, bottom)
+    policy_pos = evenly_spaced_positions(policies, 550, top, bottom)
+    asset_pos = evenly_spaced_positions(assets, 950, top, bottom)
+    positions = {**party_pos, **policy_pos, **asset_pos}
+
+    def line_markup(x1: int, y1: int, x2: int, y2: int, color: str, label: str, dashed: bool = False, bend: int = 0) -> str:
+        if bend:
+            cx1 = x1 + bend
+            cx2 = x2 - bend
+            path = f"M{x1},{y1} C{cx1},{y1} {cx2},{y2} {x2},{y2}"
+            line = f"<path d='{path}' fill='none' stroke='{color}' stroke-width='2.5' {'stroke-dasharray=\"7,5\"' if dashed else ''} opacity='0.88'/>"
+            label_x = (x1 + x2) / 2
+            label_y = (y1 + y2) / 2 - 10
+        else:
+            line = f"<line x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}' stroke='{color}' stroke-width='2.5' {'stroke-dasharray=\"7,5\"' if dashed else ''} opacity='0.88'/>"
+            label_x = (x1 + x2) / 2
+            label_y = (y1 + y2) / 2 - 10
+        label_markup = f"""
+        <rect x='{label_x - 48}' y='{label_y - 12}' width='96' height='20' rx='10'
+              fill='rgba(255,255,255,0.86)' stroke='rgba(30,54,78,0.10)' />
+        <text x='{label_x}' y='{label_y + 2}' text-anchor='middle' font-size='11' fill='#243649'>{escape(label[:18])}</text>
+        """
+        return line + label_markup
+
+    lines: List[str] = []
+    for idx, rel in enumerate(snapshot["relationships"]):
+        from_id = rel["from_node_id"]
+        to_id = rel["to_node_id"]
+        if from_id not in positions or to_id not in positions:
+            continue
+        x1, y1 = positions[from_id]
+        x2, y2 = positions[to_id]
+        if from_id in party_pos:
+            x1 += node_width // 2
+        elif from_id in policy_pos:
+            x1 += node_width // 2
+        else:
+            x1 -= node_width // 2
+        if to_id in party_pos:
+            x2 += node_width // 2
+        elif to_id in policy_pos:
+            x2 -= node_width // 2
+        else:
+            x2 -= node_width // 2
+
+        color = {
+            "party_to_policy": "#3d6fb6",
+            "party_to_asset": "#b86d2f",
+            "party_to_party": "#7a4ea3",
+            "policy_to_asset": "#2f8f6a",
+        }.get(rel["relationship_type"], "#557085")
+
+        bend = 0
+        if rel["relationship_type"] == "party_to_party":
+            bend = 90 + (idx % 3) * 25
+        elif rel["relationship_type"] == "party_to_asset":
+            bend = 30 if abs(y2 - y1) < 45 else 0
+
+        lines.append(line_markup(x1, y1, x2, y2, color, rel["role"], bend=bend))
+
+    for idx, (policy_id, policy) in enumerate(snapshot["policies"].items()):
+        asset_id = policy.get("asset_id")
+        if not asset_id or policy_id not in policy_pos or asset_id not in asset_pos:
+            continue
+        x1, y1 = policy_pos[policy_id]
+        x2, y2 = asset_pos[asset_id]
+        lines.append(
+            line_markup(
+                x1 + node_width // 2,
+                y1 + (idx % 2) * 6,
+                x2 - node_width // 2,
+                y2 + (idx % 2) * 6,
+                "#2f8f6a",
+                "Covers",
+                dashed=True,
+            )
+        )
+
+    def node_markup(node_id: str, x: int, y: int, fill: str, subtitle: str) -> str:
+        return f"""
+        <g>
+            <rect x='{x - node_width / 2}' y='{y - node_height / 2}' width='{node_width}' height='{node_height}'
+                  rx='18' fill='{fill}' stroke='rgba(18,32,43,0.12)' stroke-width='1.2'/>
+            <text x='{x}' y='{y - 3}' text-anchor='middle' font-size='13' font-weight='600' fill='#13212e'>{escape(node_label(snapshot, node_id)[:28])}</text>
+            <text x='{x}' y='{y + 15}' text-anchor='middle' font-size='11' fill='#4b6274'>{escape(subtitle)}</text>
+        </g>
+        """
+
+    nodes: List[str] = []
+    for node_id, (x, y) in party_pos.items():
+        nodes.append(node_markup(node_id, x, y, "#f5dfc6", node_id))
+    for node_id, (x, y) in policy_pos.items():
+        product = snapshot["policies"][node_id].get("product_type", "policy").title()
+        nodes.append(node_markup(node_id, x, y, "#dceaf7", f"{product} · {node_id}"))
+    for node_id, (x, y) in asset_pos.items():
+        asset_type = snapshot["assets"][node_id].get("asset_type", "asset").title()
+        nodes.append(node_markup(node_id, x, y, "#dcefe5", f"{asset_type} · {node_id}"))
+
+    svg = f"""
+    <svg width="100%" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="{width}" height="{height}" rx="28" fill="rgba(255,255,255,0.72)" stroke="rgba(19,33,46,0.08)"/>
+        <text x="42" y="44" font-size="24" font-weight="700" fill="#14212d">{escape(title)}</text>
+        <text x="150" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#8c4f20">Parties</text>
+        <text x="550" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#29598f">Policies</text>
+        <text x="950" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#2b7b5c">Assets</text>
+        {''.join(lines)}
+        {''.join(nodes)}
+    </svg>
+    """
+    return svg
+
+
+def render_relationship_map(snapshot: Dict[str, Any], title: str, height: int = 620) -> None:
+    components.html(build_relationship_svg(snapshot, title), height=height, scrolling=False)
+
+
 def activity_rows(snapshot: Dict[str, Any]) -> List[Dict[str, Any]]:
     rows = []
     for policy_id, policy in snapshot["policies"].items():
@@ -381,6 +537,9 @@ def render_dashboard(snapshot: Dict[str, Any], container_uuid: UUID) -> None:
         st.markdown("**Recent Activity**")
         st.dataframe(activity_rows(snapshot)[:12], use_container_width=True, hide_index=True)
 
+    st.markdown("**Relationship Map**")
+    render_relationship_map(snapshot, "Current Relationship Graph")
+
     blueprint = get_last_generated_scenario(container_uuid)
     with st.expander("Raw JSON", expanded=False):
         st.json(
@@ -415,9 +574,16 @@ def render_explorer(snapshot: Dict[str, Any]) -> None:
         "Relationship": {rel["relationship_id"]: rel for rel in snapshot["relationships"]},
     }
     selected_map = entity_maps[entity_type]
+    selected_options = list(selected_map.keys())
+    if not selected_options:
+        explorer_left.info(f"No {entity_type.lower()} records available in this container.")
+        return
+    current_selected_id = st.session_state.get("explore_entity_id")
+    if current_selected_id not in selected_options:
+        st.session_state["explore_entity_id"] = selected_options[0]
     selected_id = explorer_left.selectbox(
         f"{entity_type} ID",
-        options=list(selected_map.keys()),
+        options=selected_options,
         key="explore_entity_id",
     )
     explorer_left.markdown("**Collection View**")
@@ -431,7 +597,9 @@ def render_explorer(snapshot: Dict[str, Any]) -> None:
         explorer_left.dataframe(relationship_rows(snapshot), use_container_width=True, hide_index=True)
 
     explorer_right.markdown(f"**{entity_type} Detail: {selected_id}**")
-    explorer_right.json(selected_map[selected_id], expanded=True)
+    explorer_right.json(selected_map.get(selected_id, {}), expanded=True)
+    explorer_right.markdown("**Relationship Map**")
+    render_relationship_map(snapshot, "Graph Context For Current Container", height=560)
 
 
 def render_actions(container_uuid: UUID, snapshot: Dict[str, Any]) -> None:
@@ -607,13 +775,30 @@ def render_actions(container_uuid: UUID, snapshot: Dict[str, Any]) -> None:
 def render_history(snapshot: Dict[str, Any], container_uuid: UUID) -> None:
     st.subheader("Historical Views")
     policies = snapshot["policies"]
-    relationships = snapshot["relationships"]
     app = get_app()
+    blueprint = get_last_generated_scenario(container_uuid)
 
     left, right = st.columns([0.9, 1.1])
     with left:
-        as_at = st.date_input("Graph As-At Date", value=date.today(), key="as_at_date")
+        timeline_markers = []
+        if blueprint:
+            timeline_markers = blueprint.get("meta", {}).get("timeline_markers", [])
+        if timeline_markers:
+            selected_marker = st.selectbox(
+                "Scenario Timeline Marker",
+                options=timeline_markers,
+                index=max(0, len(timeline_markers) - 1),
+                key="history_timeline_marker",
+            )
+            default_as_at = date.fromisoformat(selected_marker)
+            st.caption("Use the marker dates to see relationship changes across the seeded scenario.")
+        else:
+            default_as_at = date.today()
+
+        as_at = st.date_input("Graph As-At Date", value=default_as_at, key="as_at_date")
         as_at_snapshot = app.get_graph_as_of(container_uuid, iso_from_date(as_at, hour=12))
+        st.markdown("**As-At Relationship Map**")
+        render_relationship_map(as_at_snapshot, f"Relationship Graph As At {as_at.isoformat()}", height=560)
         st.markdown("**Active Relationships As At Date**")
         st.dataframe(relationship_rows(as_at_snapshot), use_container_width=True, hide_index=True)
         st.markdown("**All Relationship Edges**")
